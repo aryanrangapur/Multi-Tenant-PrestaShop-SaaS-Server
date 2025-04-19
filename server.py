@@ -97,12 +97,12 @@ networks:
     with open(f"{path}/docker-compose.yml", "w") as f:
         f.write(compose)
 
-    # Start the Docker containers
+    # Start the Docker containers...
     subprocess.run([
         'docker-compose', '-f', f'{path}/docker-compose.yml', 'up', '-d'
     ], check=True)
 
-    # Fetch the admin folder dynamically
+    # Fetch the admin folder dynamically [as each time it is admin+<token>]
     container_name = f"{tenant}_shop"
     command = f"docker exec {container_name} sh -c \"basename $(find /var/www/html -maxdepth 1 -type d -name 'admin*' | head -n 1)\""
 
@@ -112,7 +112,7 @@ networks:
         print(f"Error fetching admin folder: {e}")
         admin_folder = "admin"  # fallback
 
-    # Wait until the PrestaShop store is up
+    # Wait until the PrestaShop store is up ...(uff)
     shop_url = f"http://localhost:{port}"
     for _ in range(30):
         try:
