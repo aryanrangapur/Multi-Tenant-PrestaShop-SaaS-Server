@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PrestaShop SaaS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Poppins', sans-serif; background: #f9f9f9; color: #222; padding: 3rem; }
+    h1 { font-size: 2rem; margin-bottom: 2rem; color: #1a1a1a; }
+    label, input { display: block; margin-bottom: 1rem; font-size: 1rem; }
+    input { padding: 0.5rem; width: 300px; max-width: 100%; }
+    button { background: #2c3e50; color: #fff; padding: 0.8rem 1.6rem; font-size: 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; transition: background 0.3s; }
+    button:hover { background: #1f2d3a; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #output { margin-top: 2rem; font-size: 1rem; }
+    #output a { color: #2c3e50; font-weight: 600; text-decoration: none; }
+    #output a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>PrestaShop SaaS</h1>
+  <label for="email">Admin Email:</label>
+  <input type="email" id="email" placeholder="admin@example.com">
+
+  <label for="password">Admin Password:</label>
+  <input type="text" id="password" placeholder="YourPassword123">
+
+  <button id="create-btn">Create New Store</button>
+  <p id="output"></p>
+
+  <script>
+    document.getElementById('create-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('create-btn');
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+
+      try {
+        const res = await fetch('/create-store', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        document.getElementById('output').innerHTML =
+          ` Store ready: <a href="${data.url}" target="_blank">${data.url}</a><br />` +
+          ` Admin URL: <a href="${data.admin_url}" target="_blank">${data.admin_url}</a><br />` +
+          ` Email: ${data.admin_email}<br />` +
+          ` Password: ${data.admin_password}`;
+      } catch (err) {
+        document.getElementById('output').textContent = 'Error creating store';
+        console.error(err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create New Store';
+      }
+    });
+  </script>
+</body>
+</html>
