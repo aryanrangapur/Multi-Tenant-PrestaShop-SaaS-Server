@@ -4,13 +4,13 @@
 
 This project implements a Flask-based backend server to dynamically deploy and manage isolated PrestaShop instances using Docker Compose. Each tenant runs in its own container with its own database, on a unique port, allowing for a scalable Software-as-a-Service (SaaS) architecture.
 
----
+
 
 ## Project Overview
 
 This backend system allows users to create PrestaShop stores dynamically by sending a POST request with custom admin credentials. The server provisions a new Docker Compose stack for each tenant, assigns it an available port, and updates the admin credentials directly in the MySQL database.
 
----
+
 
 ## Architecture
 
@@ -33,7 +33,7 @@ This backend system allows users to create PrestaShop stores dynamically by send
    - Updates admin credentials directly in the MySQL container.
 3. Returns URLs and credentials to the client.
 
----
+
 
 ## Directory Structure
 
@@ -47,7 +47,7 @@ This backend system allows users to create PrestaShop stores dynamically by send
     └── index.html          # Default landing page
 ```
 
----
+
 
 ## Prerequisites
 
@@ -64,7 +64,7 @@ Install Python packages:
 pip install flask requests
 ```
 
----
+
 
 ## How to Run
 
@@ -76,7 +76,7 @@ python myserver.py
 
 This starts the server at `http://localhost:5000`
 
----
+
 
 ### 2. Create a Store
 
@@ -111,7 +111,7 @@ The server will:
 }
 ```
 
----
+
 
 ## Environment Variables (Optional)
 
@@ -122,7 +122,7 @@ You can override default behavior using the following environment variables:
 | `BASE_PORT`   | Starting port for tenants      | `8081`    |
 | `TENANTS_DIR` | Directory for tenant folders   | `tenants` |
 
----
+
 
 ## Stopping and Cleaning Up
 
@@ -139,13 +139,13 @@ To stop all containers:
 docker ps -q --filter "name=tenant" | xargs -r docker stop
 ```
 
----
+
 
 ## License
 
 This project is licensed under the MIT License.
 ```
 
----
+
 
 Let me know if you want a version that includes cURL or Postman examples, or a separate `docker-compose.override.yml` template for customizing deployments.
