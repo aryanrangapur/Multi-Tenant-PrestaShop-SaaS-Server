@@ -20,19 +20,6 @@ This backend system allows users to create PrestaShop stores dynamically by send
 - **Docker Compose**: Each tenant is deployed as a Docker Compose stack with its own PrestaShop and MySQL service.
 - **Tenants Directory**: Each tenant has a folder containing its specific `docker-compose.yml`.
 
-### Flow:
-
-1. Client sends a POST request with desired admin email and password.
-2. Flask backend:
-   - Assigns a unique port.
-   - Creates a new directory under `/tenants`.
-   - Generates a `docker-compose.yml` for the new store.
-   - Launches containers using Docker Compose.
-   - Detects the actual admin folder (since PrestaShop randomizes it).
-   - Waits for the PrestaShop instance to become available.
-   - Updates admin credentials directly in the MySQL container.
-3. Returns URLs and credentials to the client.
-
 
 
 ## Directory Structure
@@ -63,6 +50,16 @@ Install Python packages:
 ```bash
 pip install flask requests
 ```
+
+
+## Environment Variables (Optional)
+
+You can override default behavior using the following environment variables:
+
+| Variable      | Description                    | Default   |
+|---------------|--------------------------------|-----------|
+| `BASE_PORT`   | Starting port for tenants      | `8081`    |
+| `TENANTS_DIR` | Directory for tenant folders   | `tenants` |
 
 
 
@@ -112,15 +109,37 @@ The server will:
 ```
 
 
+##  **How It Works**
 
-## Environment Variables (Optional)
+1. **User Input**  
+   The user enters an email and password in the frontend.
 
-You can override default behavior using the following environment variables:
+2. **Backend Request**  
+   The browser sends a POST request to the Flask backend with this info.
 
-| Variable      | Description                    | Default   |
-|---------------|--------------------------------|-----------|
-| `BASE_PORT`   | Starting port for tenants      | `8081`    |
-| `TENANTS_DIR` | Directory for tenant folders   | `tenants` |
+3. **Port & Folder Allocation**  
+   Flask:
+   - Finds the next free port starting from 8081.
+   - Creates a new folder like `tenants/tenant1/`.
+
+4. **Docker Compose File Generation**  
+   Flask dynamically writes a `docker-compose.yml` inside the tenant folder with:
+   - Database settings
+   - PrestaShop config (including admin credentials)
+
+5. **Start Docker Containers**  
+   Flask launches the containers using `docker-compose up -d`.
+
+6. **Wait for Setup**  
+   It checks if PrestaShop is running and fetches the actual admin folder name (e.g., `admin123`).
+
+7. **Response**  
+   Once ready, it returns:
+   - Store URL
+   - Admin panel URL
+   - Email & password
+
+
 
 
 
@@ -141,11 +160,3 @@ docker ps -q --filter "name=tenant" | xargs -r docker stop
 
 
 
-## License
-
-This project is licensed under the MIT License.
-```
-
-
-
-Let me know if you want a version that includes cURL or Postman examples, or a separate `docker-compose.override.yml` template for customizing deployments.
