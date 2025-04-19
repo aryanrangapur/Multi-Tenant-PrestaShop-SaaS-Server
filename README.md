@@ -143,10 +143,6 @@ The server will:
 
 
 
-Here’s the updated **"Stopping and Cleaning Up"** section for your README, marked appropriately and emphasizing the importance of deleting volumes due to persisted credentials:
-
----
-
 # Stopping and Cleaning Up (**Very Important**)
 
 When you're done with a store, it's essential to **stop and completely remove** the associated containers and **volumes**, as the volumes contain **persisted admin email and password** information.
