@@ -143,20 +143,38 @@ The server will:
 
 
 
-## Stopping and Cleaning Up
+Here’s the updated **"Stopping and Cleaning Up"** section for your README, marked appropriately and emphasizing the importance of deleting volumes due to persisted credentials:
 
-To stop a specific tenant:
+---
+
+# Stopping and Cleaning Up (**Very Important**)
+
+When you're done with a store, it's essential to **stop and completely remove** the associated containers and **volumes**, as the volumes contain **persisted admin email and password** information.
+
+#### To stop and delete a specific tenant:
 
 ```bash
 cd tenants/tenantX
 docker-compose down -v
 ```
 
-To stop all containers:
+> **Important**: The `-v` flag ensures the associated volumes (like MySQL data and PrestaShop config) are deleted.  
+> This is **critical** to avoid leaking sensitive information such as admin credentials.
+
+#### To stop all tenant containers (without removing volumes): [Not suggested unless you have important data]
 
 ```bash
 docker ps -q --filter "name=tenant" | xargs -r docker stop
 ```
+
+If you also want to delete **all tenant volumes**, add this afterward:
+
+```bash
+docker volume ls --filter "name=tenant" -q | xargs -r docker volume rm
+```
+
+
+
 
 
 
