@@ -38,7 +38,7 @@ def create_store():
     admin_password = custom_password 
     admin_folder = "admin"  # default fallback
 
-    # Create docker-compose.yml file
+    # Create docker-compose.yml file (in tenant folder -> will be like tenant<i> 
     compose = f"""
 version: '3.9'
 services:
