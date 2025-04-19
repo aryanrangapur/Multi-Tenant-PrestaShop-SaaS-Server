@@ -111,6 +111,9 @@ The server will:
 
 ##  **How It Works**
 
+![Architecture Diagram](/saas-arch.png)
+
+
 1. **User Input**  
    The user enters an email and password in the frontend.
 
@@ -138,7 +141,6 @@ The server will:
    - Store URL
    - Admin panel URL
    - Email & password
-
 
 
 
