@@ -147,6 +147,7 @@ The server will:
 
 # Stopping and Cleaning Up (**Very Important**)
 
+***Why it is imp:***
 When you're done with a store, it's essential to **stop and completely remove** the associated containers and **volumes**, as the volumes contain **persisted admin email and password** information.
 
 #### To stop and delete a specific tenant:
