@@ -173,6 +173,7 @@ If you also want to delete **all tenant volumes**, add this afterward:
 docker volume ls --filter "name=tenant" -q | xargs -r docker volume rm
 ```
 
+***Give it a star if it helped ⭐*** 
 
 
 
