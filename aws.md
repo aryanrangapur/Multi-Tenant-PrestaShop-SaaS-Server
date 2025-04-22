@@ -112,7 +112,7 @@ To deploy your application (`index.html` and `myserver.py`) on AWS, here are the
      ```
 
      
-### TO FINAL RUN:
+### FOR FINAL RUN:
 ``` bash
   python3 myserver.py &
 ```
