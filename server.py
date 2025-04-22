@@ -99,7 +99,7 @@ networks:
 
     # Start the Docker containers...
     subprocess.run([
-        'docker-compose', '-f', f'{path}/docker-compose.yml', 'up', '-d'
+       'sudo', 'docker-compose', '-f', f'{path}/docker-compose.yml', 'up', '-d'
     ], check=True)
 
     # Fetch the admin folder dynamically [as each time it is admin+<token>]
