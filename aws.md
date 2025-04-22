@@ -16,6 +16,7 @@ To deploy your application (`index.html` and `myserver.py`) on AWS, here are the
      - **80** (HTTP).
      - **443** (HTTPS).
      - **5000** (to access your Flask app).
+     - **8081-9000** (for tenants).
    - Review and launch the instance. Make sure to generate a key pair for SSH access.
 
 #### 2. **Connect to your EC2 Instance:**
@@ -69,7 +70,7 @@ To deploy your application (`index.html` and `myserver.py`) on AWS, here are the
    - **Configure Nginx:**
      1. Open the Nginx config file:
         ```bash
-        sudo nano /etc/nginx/sites-available/default
+        sudo vim /etc/nginx/sites-available/default
         ```
 
      2. Update the server block to proxy requests to your Flask app:
