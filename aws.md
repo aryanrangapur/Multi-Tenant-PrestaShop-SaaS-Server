@@ -117,6 +117,6 @@ To deploy your application (`index.html` and `myserver.py`) on AWS, here are the
   python3 myserver.py &
 ```
 
-Then visit:
+visit:
 ```
   http://<your-ec2-ip>:5000
