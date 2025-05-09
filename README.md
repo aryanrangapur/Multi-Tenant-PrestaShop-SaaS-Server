@@ -16,7 +16,7 @@ This backend system allows users to create PrestaShop stores dynamically by send
 
 ### Components:
 
-- **Flask Server** (`myserver.py`): Handles HTTP requests, creates tenant directories, generates docker-compose files, and manages the lifecycle of tenant containers.
+- **Flask Server** (`myserver.py`): Handles HTTP requests, creates tenant directories, generates docker-compose files, and manages the lifecycle of tenant containers..
 - **Docker Compose**: Each tenant is deployed as a Docker Compose stack with its own PrestaShop and MySQL service.
 - **Tenants Directory**: Each tenant has a folder containing its specific `docker-compose.yml`.
 
