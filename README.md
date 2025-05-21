@@ -8,7 +8,7 @@ This project implements a Flask-based backend server to dynamically deploy and m
 
 ## Project Overview
 
-This backend system allows users to create PrestaShop stores dynamically by sending a POST request with custom admin credentials. The server provisions a new Docker Compose stack for each tenant, assigns it an available port, and updates the admin credentials directly in the MySQL database.
+This backend system allows users to create PrestaShop stores dynamically by sending a POST request with custom admin credentials. The server provisions a new Docker Compose stack for each tenant, assigns it an available port and updates the admin credentials directly in the MySQL database.
 
 
 
