@@ -2,7 +2,7 @@
 
 A scalable infrastructure that dynamically provisions isolated PrestaShop e-commerce instances with automated deployment, containerization, and database management.
 
-## 🚀 Features
+## Features
 
 - **Multi-tenant Architecture**: Each store runs in isolated Docker containers
 - **Automated Deployment**: Deploy fully functional PrestaShop instances in under 2 minutes
@@ -10,4 +10,4 @@ A scalable infrastructure that dynamically provisions isolated PrestaShop e-comm
 - **Containerized Isolation**: Dedicated MySQL database for each tenant
 - **Scalable Design**: Support for hundreds of isolated stores
 
-## 🏗️ Architecture
+## Architecture
