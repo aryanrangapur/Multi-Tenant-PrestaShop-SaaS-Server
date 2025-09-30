@@ -1,0 +1,37 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - BASE_PORT=8081
+      - TENANTS_DIR=/app/tenants
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/tenants:/app/tenants
+    restart: unless-stopped
+    networks:
+      - saas-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - saas-network
+
+networks:
+  saas-network:
+    driver: bridge
+
+volumes:
+  tenants_data:
