@@ -21,7 +21,55 @@ def get_next_port():
         port += 1
 
 def get_instance_ip():
-    return 'localhost'
+    """Fetch the EC2 instance's public or private IP from metadata service with IMDSv2 support."""
+    import requests
+    
+    # Step 1: Get IMDSv2 session token (required for IMDSv2)
+    try:
+        token_response = requests.put(
+            'http://169.254.169.254/latest/api/token',
+            headers={'X-aws-ec2-metadata-token-ttl-seconds': '21600'},
+            timeout=2
+        )
+        token = token_response.text
+        if token:
+            headers = {'X-aws-ec2-metadata-token': token}
+        else:
+            headers = {}
+            print("Warning: Empty token response, falling back to IMDSv1")
+    except requests.RequestException as e:
+        print(f"Warning: Failed to get IMDS token: {e}, trying IMDSv1")
+        headers = {}
+    
+    # Step 2: Try public IPv4
+    try:
+        ip = requests.get(
+            'http://169.254.169.254/latest/meta-data/public-ipv4',
+            headers=headers,
+            timeout=2
+        ).text.strip()
+        if ip and ip != '':  # Ensure not empty
+            print(f"Using public IP: {ip}")
+            return ip
+    except requests.RequestException as e:
+        print(f"Warning: Failed to get public IPv4: {e}")
+    
+    # Step 3: Fallback to private IPv4
+    try:
+        ip = requests.get(
+            'http://169.254.169.254/latest/meta-data/local-ipv4',
+            headers=headers,
+            timeout=2
+        ).text.strip()
+        if ip and ip != '':  # Ensure not empty
+            print(f"Using private IP: {ip}")
+            return ip
+    except requests.RequestException as e:
+        print(f"Warning: Failed to get private IPv4: {e}")
+    
+    # Step 4: Final fallback for non-EC2 (local testing)
+    print("Warning: No EC2 IP found, using localhost fallback")
+    return '127.0.0.1'
 
 def trigger_admin_renaming(tenant, port):
     """Access the admin URL to trigger folder renaming"""
@@ -76,14 +124,14 @@ def get_actual_admin_folder(tenant):
             folders = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
             for folder in folders:
                 if folder.startswith('admin') and folder != 'admin':
-                    print(f"✅ Found admin folder via find: {folder}")
+                    print(f" Found admin folder via find: {folder}")
                     return folder
         
-        print("❌ No renamed admin folder found, using default 'admin'")
+        print(" No renamed admin folder found, using default 'admin'")
         return "admin"
         
     except Exception as e:
-        print(f"❌ Error detecting admin folder: {e}")
+        print(f" Error detecting admin folder: {e}")
         return "admin"
 
 def debug_admin_folder_detection(tenant):
@@ -318,7 +366,7 @@ networks:
             }), 202
 
         # TRIGGER THE ADMIN RENAMING
-        print("🚀 Triggering admin folder renaming...")
+        print(" Triggering admin folder renaming...")
         trigger_admin_renaming(tenant, port)
         
         # Debug what's actually there
@@ -328,18 +376,18 @@ networks:
         time.sleep(5)
         
         # Now detect the actual admin folder
-        print("🔍 Detecting renamed admin folder...")
+        print(" Detecting renamed admin folder...")
         actual_admin_folder = get_actual_admin_folder(tenant)
         
         # If we still only found 'admin', try one more time with delay
         if actual_admin_folder == "admin":
-            print("🔄 Retrying admin folder detection with longer delay...")
+            print("Retrying admin folder detection with longer delay...")
             time.sleep(10)
             actual_admin_folder = get_actual_admin_folder(tenant)
         
         admin_url = f"{shop_url}/{actual_admin_folder}"
         
-        print(f"🎯 Final Admin URL: {admin_url}")
+        print(f" Final Admin URL: {admin_url}")
 
         check_container_health(tenant)
         return jsonify({
@@ -368,4 +416,4 @@ def debug_containers():
 if __name__ == '__main__':
     print(f"Tenants directory: {TENANTS_DIR}")
     print("Starting Flask server on http://0.0.0.0:5000")
-    app.run('0.0.0.0', 5000, debug=True)
+    app.run('0.0.0.0', 5000)
