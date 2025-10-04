@@ -1,6 +1,6 @@
 services:
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
@@ -8,6 +8,7 @@ services:
     environment:
       - BASE_PORT=8081
       - TENANTS_DIR=/app/tenants
+      - SERVER_IP=${SERVER_IP}  # Add this
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./backend/tenants:/app/tenants
@@ -22,7 +23,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+      - NEXT_PUBLIC_BACKEND_URL=http://${SERVER_IP}:5000  # Use variable
     depends_on:
       - backend
     restart: unless-stopped
@@ -32,6 +33,3 @@ services:
 networks:
   saas-network:
     driver: bridge
-
-volumes:
-  tenants_data:
