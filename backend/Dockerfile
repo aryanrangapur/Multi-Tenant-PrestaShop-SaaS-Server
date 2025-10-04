@@ -2,11 +2,18 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including Docker and Docker Compose
 RUN apt-get update && apt-get install -y \
+    curl \
     docker.io \
-    docker-compose \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Docker Compose
+RUN curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose
+
+# Verify installation
+RUN docker-compose --version
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .

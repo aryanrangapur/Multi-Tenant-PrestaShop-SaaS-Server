@@ -1,19 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 // Add this Highlight component
 const Highlight = ({ children }: { children: React.ReactNode }) => (
   <span className="bg-yellow-200 text-black px-1 rounded-sm">{children}</span>
-);
-
-// Animated loading dots
-const LoadingDots = () => (
-  <span className="inline-flex space-x-1">
-    <span className="animate-bounce">.</span>
-    <span className="animate-bounce" style={{ animationDelay: '0.1s' }}>.</span>
-    <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
-  </span>
 );
 
 export default function Home() {
@@ -23,16 +14,6 @@ export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  
-  // Progress tracking
-  const [progress, setProgress] = useState({
-    percent: 0,
-    stage: '',
-    message: '',
-    status: 'idle' // idle, processing, completed, error
-  });
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [pollingCount, setPollingCount] = useState(0);
 
   const validatePassword = (password: string) => {
     if (password.length < 8) {
@@ -56,95 +37,9 @@ export default function Home() {
     setPasswordError(validatePassword(newPassword));
   };
 
-  // Poll for progress updates - Improved with better error handling
-  useEffect(() => {
-    let pollInterval: NodeJS.Timeout;
-
-    if (tenantId && loading) {
-      const pollProgress = async () => {
-        try {
-          console.log(`Polling progress for tenant: ${tenantId}`);
-          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/deployment-status/${tenantId}`);
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: Failed to fetch progress`);
-          }
-          
-          const data = await response.json();
-          console.log('Progress data received:', data);
-          
-          // Update progress state with received data
-          setProgress(prev => ({
-            ...prev,
-            percent: data.percent !== undefined ? data.percent : prev.percent,
-            stage: data.stage || prev.stage,
-            message: data.message || prev.message,
-            status: data.status || prev.status
-          }));
-
-          setPollingCount(prev => prev + 1);
-
-          // If deployment is completed or errored, stop polling
-          if (data.status === 'completed' || data.status === 'error') {
-            console.log(`Deployment ${data.status}, stopping polling`);
-            clearInterval(pollInterval);
-            setLoading(false);
-            
-            if (data.status === 'completed' && data.result) {
-              setResult(data.result);
-            } else if (data.status === 'error') {
-              setError(data.message || 'Deployment failed');
-            }
-          }
-        } catch (err) {
-          console.error('Error polling progress:', err);
-          // Increment polling count even on errors to show activity
-          setPollingCount(prev => prev + 1);
-        }
-      };
-
-      // Start polling immediately and then every 2 seconds
-      pollProgress();
-      pollInterval = setInterval(pollProgress, 2000);
-    }
-
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-    };
-  }, [tenantId, loading]);
-
-  // Fallback progress simulation if backend doesn't provide percentages
-  useEffect(() => {
-    let fallbackInterval: NodeJS.Timeout;
-
-    if (loading && progress.percent === 0 && pollingCount > 2) {
-      // If after a few polls we're still at 0%, start a fallback progress
-      fallbackInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev.percent >= 90 || prev.status === 'completed' || prev.status === 'error') {
-            clearInterval(fallbackInterval);
-            return prev;
-          }
-          return {
-            ...prev,
-            percent: Math.min(prev.percent + 5, 90) // Cap at 90% until completion
-          };
-        });
-      }, 5000);
-    }
-
-    return () => {
-      if (fallbackInterval) {
-        clearInterval(fallbackInterval);
-      }
-    };
-  }, [loading, progress.percent, pollingCount]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     // Validate password before submitting
     const passwordValidationError = validatePassword(password);
     if (passwordValidationError) {
@@ -156,16 +51,8 @@ export default function Home() {
     setError("");
     setResult(null);
     setPasswordError("");
-    setPollingCount(0);
-    setProgress({
-      percent: 0,
-      stage: 'Starting deployment...',
-      message: 'Preparing to create your store',
-      status: 'processing'
-    });
 
     try {
-      console.log('Sending create-store request...');
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/create-store`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,30 +60,16 @@ export default function Home() {
       });
 
       const data = await res.json();
-      console.log('Create-store response:', data);
-
+      
       if (!res.ok) {
         throw new Error(data.error || "Failed to create store");
       }
 
-      // Store the tenant ID for progress tracking
-      if (data.tenant_id) {
-        console.log('Tenant ID received:', data.tenant_id);
-        setTenantId(data.tenant_id);
-      } else {
-        // If no tenant ID, something went wrong
-        throw new Error('No tenant ID received from server');
-      }
+      setResult(data);
     } catch (err: any) {
-      console.error('Submit error:', err);
       setError(err.message);
+    } finally {
       setLoading(false);
-      setProgress({
-        percent: 0,
-        stage: 'Error',
-        message: err.message,
-        status: 'error'
-      });
     }
   };
 
@@ -257,7 +130,6 @@ export default function Home() {
                   placeholder="admin@example.com"
                   className="w-full px-4 py-3 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   required
-                  disabled={loading}
                 />
               </div>
 
@@ -273,9 +145,8 @@ export default function Home() {
                   placeholder="Enter secure password (min 8 chars with letters, numbers & special chars)"
                   className={`w-full px-4 py-3 rounded-md border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${
                     passwordError ? "border-destructive" : password ? "border-green-500" : "border-border"
-                  } ${loading ? 'opacity-50' : ''}`}
+                  }`}
                   required
-                  disabled={loading}
                 />
                 {passwordError && (
                   <p className="mt-2 text-sm text-destructive">{passwordError}</p>
@@ -293,45 +164,9 @@ export default function Home() {
                 disabled={loading || !!passwordError}
                 className="w-full md:w-auto px-8 py-3 bg-foreground text-background font-medium rounded-md hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
-                    Deploying Store...
-                  </span>
-                ) : (
-                  "Deploy Store"
-                )}
+                {loading ? "Provisioning..." : "Deploy Store"}
               </button>
             </form>
-
-            {/* Progress Section - Text only */}
-            {loading && (
-              <div className="mt-8 p-6 bg-muted/30 border border-border rounded-lg">
-                <h3 className="text-lg font-medium text-foreground mb-4">
-                  Deploying Your Store <LoadingDots />
-                </h3>
-                
-                <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                    <span className="font-medium text-foreground">{progress.stage}</span>
-		    {/*  <span className="text-sm text-muted-foreground font-medium">
-                      {progress.percent}% {pollingCount > 0 && `(Polling: ${pollingCount})`}
-                    </span> */}
-                  </div>
-                  
-                  <p className="text-sm text-muted-foreground">{progress.message}</p>
-                  
-                  <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                    <p>This usually takes 1-2 minutes. Please don't close this page.</p>
-                    {progress.percent === 0 && pollingCount > 2 && (
-                      <p className="text-amber-600 mt-1">
-                        If progress stays at 0%, the backend might not be reporting progress correctly.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
 
             <div className="mt-8">
               {error && (
@@ -342,22 +177,17 @@ export default function Home() {
 
               {result && (
                 <div className="space-y-4 p-6 bg-background border border-border rounded-md">
-                  <div className="flex items-center text-green-600 mb-2">
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <h3 className="font-medium text-lg">Store Successfully Deployed!</h3>
-                  </div>
+                  <h3 className="font-medium text-lg text-foreground">Store Successfully Deployed</h3>
                   <div className="space-y-3 text-sm">
                     <div>
                       <span className="text-muted-foreground">Store URL:</span>
-                      <a href={result.url} target="_blank" rel="noopener noreferrer" className="block text-foreground hover:underline font-medium mt-1">
+                      <a href={result.url} target="_blank" className="block text-foreground hover:underline font-medium mt-1">
                         {result.url}
                       </a>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Admin Dashboard:</span>
-                      <a href={result.admin_url} target="_blank" rel="noopener noreferrer" className="block text-foreground hover:underline font-medium mt-1">
+                      <a href={result.admin_url} target="_blank" className="block text-foreground hover:underline font-medium mt-1">
                         {result.admin_url}
                       </a>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -372,26 +202,6 @@ export default function Home() {
                       <span className="text-muted-foreground">Password:</span>
                       <span className="block text-foreground font-medium mt-1">{result.admin_password}</span>
                     </div>
-                  </div>
-                  <div className="pt-4 border-t border-border">
-                    <button
-                      onClick={() => {
-                        setResult(null);
-                        setEmail("");
-                        setPassword("");
-                        setTenantId(null);
-                        setProgress({
-                          percent: 0,
-                          stage: '',
-                          message: '',
-                          status: 'idle'
-                        });
-                        setPollingCount(0);
-                      }}
-                      className="px-4 py-2 bg-foreground text-background rounded-md text-sm hover:bg-foreground/90"
-                    >
-                      Deploy Another Store
-                    </button>
                   </div>
                 </div>
               )}
