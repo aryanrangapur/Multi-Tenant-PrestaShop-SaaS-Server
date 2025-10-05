@@ -23,19 +23,19 @@ def get_instance_ip():
         try:
             ip = requests.get(url, headers=headers, timeout=2).text.strip()
             if ip:
-                print(f"✅ Using IP: {ip}")
+                print(f" Using IP: {ip}")
                 return ip
         except requests.RequestException:
             pass
 
-    print("⚠️  No EC2 IP found, falling back to localhost.")
+    print("No EC2 IP found, falling back to localhost.")
     return "127.0.0.1"
 
 
 def update_env_file(file_path, pattern, replacement):
     """Update or insert a variable line in an .env file."""
     if not os.path.exists(file_path):
-        print(f"⚠️  {file_path} not found, skipping.")
+        print(f" {file_path} not found, skipping.")
         return False
 
     with open(file_path, "r") as f:
@@ -49,7 +49,7 @@ def update_env_file(file_path, pattern, replacement):
     with open(file_path, "w") as f:
         f.write(new_content)
 
-    print(f"✅ Updated {file_path}")
+    print(f"Updated {file_path}")
     return True
 
 
@@ -73,10 +73,8 @@ if __name__ == "__main__":
     update_env_file(frontend_env, r"^NEXT_PUBLIC_BACKEND_URL=.*", f"NEXT_PUBLIC_BACKEND_URL=http://{ip}:5000")
     update_env_file(backend_env, r"^SERVER_IP=.*", f"SERVER_IP={ip}")
 
-    print("\n📋 Summary of updated .env values:")
-    print("---------------------------------------------------")
+    print("\n Summary of updated .env values:")
     print(f"Frontend → NEXT_PUBLIC_BACKEND_URL = {read_env_line(frontend_env, 'NEXT_PUBLIC_BACKEND_URL')}")
     print(f"Backend  → SERVER_IP               = {read_env_line(backend_env, 'SERVER_IP')}")
-    print("---------------------------------------------------")
-    print("🎉 Environment files updated successfully!")
+    print(" Environment files updated successfully!")
 
