@@ -4,33 +4,44 @@ import re
 import requests
 
 def get_instance_ip():
-    """Fetch the EC2 instance's public or private IP from metadata service with IMDSv2 support."""
+    """Get the server's public IP with simple fallback - WORKS ON ANY CLOUD"""
     try:
-        token_response = requests.put(
-            'http://169.254.169.254/latest/api/token',
-            headers={'X-aws-ec2-metadata-token-ttl-seconds': '21600'},
-            timeout=2
-        )
-        token = token_response.text
-        headers = {'X-aws-ec2-metadata-token': token} if token else {}
-    except requests.RequestException:
-        headers = {}
-
-    for url in [
-        'http://169.254.169.254/latest/meta-data/public-ipv4',
-        'http://169.254.169.254/latest/meta-data/local-ipv4'
-    ]:
-        try:
-            ip = requests.get(url, headers=headers, timeout=2).text.strip()
-            if ip:
-                print(f" Using IP: {ip}")
-                return ip
-        except requests.RequestException:
-            pass
-
-    print("No EC2 IP found, falling back to localhost.")
+        # Try to get public IP from icanhazip.com
+        response = requests.get('https://icanhazip.com', timeout=5)
+        ip = response.text.strip()
+        
+        # Validate it's a proper IP address
+        if ip and len(ip) > 6 and len(ip) < 16:  # Basic IP validation
+            print(f"✅ Using public IP: {ip}")
+            return ip
+        else:
+            print(f"⚠️  Invalid IP format from icanhazip: {ip}")
+            raise ValueError("Invalid IP format")
+            
+    except Exception as e:
+        print(f"⚠️  Failed to get public IP from icanhazip: {e}")
+        
+        # Try alternative IP services as backup
+        alternative_services = [
+            'https://api.ipify.org',
+            'https://checkip.amazonaws.com',
+            'https://ipinfo.io/ip'
+        ]
+        
+        for service in alternative_services:
+            try:
+                response = requests.get(service, timeout=5)
+                ip = response.text.strip()
+                if ip and len(ip) > 6 and len(ip) < 16:
+                    print(f"✅ Using public IP from {service}: {ip}")
+                    return ip
+            except Exception as alt_e:
+                print(f"⚠️  Failed to get IP from {service}: {alt_e}")
+                continue
+    
+    # Final fallback
+    print("🚨 Warning: No public IP found, using localhost fallback")
     return "127.0.0.1"
-
 
 def update_env_file(file_path, pattern, replacement):
     """Update or insert a variable line in an .env file."""
@@ -52,7 +63,6 @@ def update_env_file(file_path, pattern, replacement):
     print(f"Updated {file_path}")
     return True
 
-
 def read_env_line(file_path, key):
     """Read specific key value from .env."""
     if not os.path.exists(file_path):
@@ -62,7 +72,6 @@ def read_env_line(file_path, key):
             if line.startswith(key + "="):
                 return line.strip().split("=", 1)[1]
     return "N/A"
-
 
 if __name__ == "__main__":
     ip = get_instance_ip()
@@ -77,4 +86,3 @@ if __name__ == "__main__":
     print(f"Frontend → NEXT_PUBLIC_BACKEND_URL = {read_env_line(frontend_env, 'NEXT_PUBLIC_BACKEND_URL')}")
     print(f"Backend  → SERVER_IP               = {read_env_line(backend_env, 'SERVER_IP')}")
     print(" Environment files updated successfully!")
-
