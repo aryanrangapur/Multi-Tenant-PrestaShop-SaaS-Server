@@ -16,6 +16,30 @@ const LoadingDots = () => (
   </span>
 );
 
+// Copy to clipboard component
+const CopyButton = ({ text, label }: { text: string; label: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="px-3 py-1 text-sm bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
+    >
+      {copied ? 'Copied!' : 'Copy'}
+    </button>
+  );
+};
+
 export default function Home() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,7 +80,22 @@ export default function Home() {
     setPasswordError(validatePassword(newPassword));
   };
 
-  // Poll for progress updates - Improved with better error handling
+  // Reset deployment state when inputs change
+  useEffect(() => {
+    if ((email || password) && !loading && !result) {
+      setError("");
+      setTenantId(null);
+      setProgress({
+        percent: 0,
+        stage: '',
+        message: '',
+        status: 'idle'
+      });
+      setPollingCount(0);
+    }
+  }, [email, password, loading, result]);
+
+  // Poll for progress updates
   useEffect(() => {
     let pollInterval: NodeJS.Timeout;
 
@@ -98,7 +137,6 @@ export default function Home() {
           }
         } catch (err) {
           console.error('Error polling progress:', err);
-          // Increment polling count even on errors to show activity
           setPollingCount(prev => prev + 1);
         }
       };
@@ -115,12 +153,11 @@ export default function Home() {
     };
   }, [tenantId, loading]);
 
-  // Fallback progress simulation if backend doesn't provide percentages
+  // Fallback progress simulation
   useEffect(() => {
     let fallbackInterval: NodeJS.Timeout;
 
     if (loading && progress.percent === 0 && pollingCount > 2) {
-      // If after a few polls we're still at 0%, start a fallback progress
       fallbackInterval = setInterval(() => {
         setProgress(prev => {
           if (prev.percent >= 90 || prev.status === 'completed' || prev.status === 'error') {
@@ -129,7 +166,7 @@ export default function Home() {
           }
           return {
             ...prev,
-            percent: Math.min(prev.percent + 5, 90) // Cap at 90% until completion
+            percent: Math.min(prev.percent + 5, 90)
           };
         });
       }, 5000);
@@ -152,10 +189,12 @@ export default function Home() {
       return;
     }
 
+    // COMPLETE RESET - Clear all previous deployment data
     setLoading(true);
     setError("");
     setResult(null);
     setPasswordError("");
+    setTenantId(null);
     setPollingCount(0);
     setProgress({
       percent: 0,
@@ -179,18 +218,28 @@ export default function Home() {
         throw new Error(data.error || "Failed to create store");
       }
 
-      // Store the tenant ID for progress tracking
+      // Store the NEW tenant ID for progress tracking
       if (data.tenant_id) {
-        console.log('Tenant ID received:', data.tenant_id);
+        console.log('New Tenant ID received:', data.tenant_id);
         setTenantId(data.tenant_id);
+      } else if (data.url) {
+        // If we get URLs directly, set as result immediately
+        console.log('Store created successfully!');
+        setResult({
+          url: data.url,
+          admin_url: data.admin_url,
+          admin_email: data.admin_email,
+          admin_password: data.admin_password
+        });
+        setLoading(false);
       } else {
-        // If no tenant ID, something went wrong
-        throw new Error('No tenant ID received from server');
+        throw new Error('No tenant ID or store URLs received from server');
       }
     } catch (err: any) {
       console.error('Submit error:', err);
       setError(err.message);
       setLoading(false);
+      setTenantId(null);
       setProgress({
         percent: 0,
         stage: 'Error',
@@ -199,6 +248,7 @@ export default function Home() {
       });
     }
   };
+
 
   return (
     <main className="min-h-screen">
@@ -304,23 +354,20 @@ export default function Home() {
               </button>
             </form>
 
-            {/* Progress Section - Text only */}
+            {/* Progress Section */}
             {loading && (
               <div className="mt-8 p-6 bg-muted/30 border border-border rounded-lg">
                 <h3 className="text-lg font-medium text-foreground mb-4">
                   Deploying Your Store <LoadingDots />
                 </h3>
-                
+
                 <div className="space-y-3">
-                <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center">
                     <span className="font-medium text-foreground">{progress.stage}</span>
-		    {/*  <span className="text-sm text-muted-foreground font-medium">
-                      {progress.percent}% {pollingCount > 0 && `(Polling: ${pollingCount})`}
-                    </span> */}
                   </div>
-                  
+
                   <p className="text-sm text-muted-foreground">{progress.message}</p>
-                  
+
                   <div className="text-xs text-muted-foreground pt-2 border-t border-border">
                     <p>This usually takes 1-2 minutes. Please don't close this page.</p>
                     {progress.percent === 0 && pollingCount > 2 && (
@@ -341,57 +388,119 @@ export default function Home() {
               )}
 
               {result && (
-                <div className="space-y-4 p-6 bg-background border border-border rounded-md">
+                <div className="space-y-6 p-6 bg-background border border-border rounded-md">
                   <div className="flex items-center text-green-600 mb-2">
                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                     <h3 className="font-medium text-lg">Store Successfully Deployed!</h3>
                   </div>
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Store URL:</span>
-                      <a href={result.url} target="_blank" rel="noopener noreferrer" className="block text-foreground hover:underline font-medium mt-1">
-                        {result.url}
-                      </a>
+
+                  <div className="grid gap-4 text-sm">
+                    {/* Store URL */}
+                    <div className="p-4 bg-muted/30 rounded border border-border">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <span className="font-medium">Store Frontend</span>
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-foreground hover:underline font-medium mt-1"
+                          >
+                            {result.url}
+                          </a>
+                          <p className="text-xs text-muted-foreground mt-1">Your live e-commerce store</p>
+                        </div>
+                        <a
+                          href={result.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-4 px-3 py-1 bg-foreground text-background rounded text-sm hover:bg-foreground/90 transition-colors font-medium"
+                        >
+                          Visit
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Admin Dashboard:</span>
-                      <a href={result.admin_url} target="_blank" rel="noopener noreferrer" className="block text-foreground hover:underline font-medium mt-1">
-                        {result.admin_url}
-                      </a>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Use this URL to access your admin dashboard (bookmark it!)
-                      </p>
+
+                    {/* Admin URL */}
+                    <div className="p-4 bg-muted/30 rounded border border-border">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <span className="font-medium">Admin Dashboard</span>
+                          <a
+                            href={result.admin_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-foreground hover:underline font-medium mt-1"
+                          >
+                            {result.admin_url}
+                          </a>
+                          <p className="text-xs text-muted-foreground mt-1">Manage your store settings and products</p>
+                        </div>
+                        <a
+                          href={result.admin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-4 px-3 py-1 bg-foreground text-background rounded text-sm hover:bg-foreground/90 transition-colors font-medium"
+                        >
+                          Login
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Email:</span>
-                      <span className="block text-foreground font-medium mt-1">{result.admin_email}</span>
+
+                    {/* Email */}
+                    <div className="p-4 bg-muted/30 rounded border border-border">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <span className="font-medium">Admin Email</span>
+                          <div className="flex items-center mt-1">
+                            <span className="text-foreground font-mono">{result.admin_email}</span>
+                          </div>
+                        </div>
+                        <CopyButton text={result.admin_email} label="Email" />
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Password:</span>
-                      <span className="block text-foreground font-medium mt-1">{result.admin_password}</span>
+
+                    {/* Password */}
+                    <div className="p-4 bg-muted/30 rounded border border-border">
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <span className="font-medium">Admin Password</span>
+                          <div className="flex items-center mt-1">
+                            <span className="text-foreground font-mono">{result.admin_password}</span>
+                          </div>
+                        </div>
+                        <CopyButton text={result.admin_password} label="Password" />
+                      </div>
                     </div>
                   </div>
+
                   <div className="pt-4 border-t border-border">
-                    <button
-                      onClick={() => {
-                        setResult(null);
-                        setEmail("");
-                        setPassword("");
-                        setTenantId(null);
-                        setProgress({
-                          percent: 0,
-                          stage: '',
-                          message: '',
-                          status: 'idle'
-                        });
-                        setPollingCount(0);
-                      }}
-                      className="px-4 py-2 bg-foreground text-background rounded-md text-sm hover:bg-foreground/90"
-                    >
-                      Deploy Another Store
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                      <button
+                        onClick={() => {
+                          setResult(null);
+                          setEmail("");
+                          setPassword("");
+                          setTenantId(null);
+                          setProgress({
+                            percent: 0,
+                            stage: '',
+                            message: '',
+                            status: 'idle'
+                          });
+                          setPollingCount(0);
+                        }}
+                        className="px-6 py-2 bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
+                      >
+                        Deploy Another Store
+                      </button>
+
+                      <div className="text-xs text-muted-foreground flex-1">
+                        <p>Save these credentials in a secure place. You will need them to access your store admin.</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

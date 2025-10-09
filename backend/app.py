@@ -83,55 +83,44 @@ def get_next_port():
     raise Exception(f"No available ports found in range {BASE_PORT}-{max_port}")
 
 def get_instance_ip():
-    """Fetch the EC2 instance's public or private IP from metadata service with IMDSv2 support."""
-    import requests
-
-    # Step 1: Get IMDSv2 session token (required for IMDSv2)
+    """Get server IP - optimized for GCP but works everywhere"""
+    
+    # Try GCP metadata first (if on GCP)
     try:
-        token_response = requests.put(
-            'http://169.254.169.254/latest/api/token',
-            headers={'X-aws-ec2-metadata-token-ttl-seconds': '21600'},
-            timeout=2
+        response = requests.get(
+            'http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip',
+            headers={'Metadata-Flavor': 'Google'},
+            timeout=1
         )
-        token = token_response.text
-        if token:
-            headers = {'X-aws-ec2-metadata-token': token}
-        else:
-            headers = {}
-            print("Warning: Empty token response, falling back to IMDSv1")
-    except requests.RequestException as e:
-        print(f"Warning: Failed to get IMDS token: {e}, trying IMDSv1")
-        headers = {}
-
-    # Step 2: Try public IPv4
-    try:
-        ip = requests.get(
-            'http://169.254.169.254/latest/meta-data/public-ipv4',
-            headers=headers,
-            timeout=2
-        ).text.strip()
-        if ip and ip != '':  # Ensure not empty
-            print(f"Using public IP: {ip}")
+        ip = response.text.strip()
+        if ip and 6 < len(ip) < 16:
+            print(f"✅ Using GCP external IP: {ip}")
             return ip
-    except requests.RequestException as e:
-        print(f"Warning: Failed to get public IPv4: {e}")
-
-    # Step 3: Fallback to private IPv4
-    try:
-        ip = requests.get(
-            'http://169.254.169.254/latest/meta-data/local-ipv4',
-            headers=headers,
-            timeout=2
-        ).text.strip()
-        if ip and ip != '':  # Ensure not empty
-            print(f"Using private IP: {ip}")
-            return ip
-    except requests.RequestException as e:
-        print(f"Warning: Failed to get private IPv4: {e}")
-
-    # Step 4: Final fallback for non-EC2 (local testing)
-    print("Warning: No EC2 IP found, using localhost fallback")
-    return '127.0.0.1'
+    except:
+        pass  # Not on GCP or metadata unavailable
+    
+    # Then try public IP services (works everywhere)
+    services = [
+        'https://icanhazip.com',
+        'https://api.ipify.org', 
+        'https://checkip.amazonaws.com',
+        'https://ipinfo.io/ip'
+    ]
+    
+    for service in services:
+        try:
+            response = requests.get(service, timeout=3)
+            ip = response.text.strip()
+            if ip and 6 < len(ip) < 16:
+                print(f"✅ Using public IP from {service}: {ip}")
+                return ip
+        except Exception as e:
+            print(f"⚠️  Failed to get IP from {service}: {e}")
+            continue
+    
+    # Final fallback
+    print("🚨 Warning: No public IP found, using localhost fallback")
+    return 'localhost'
 
 def trigger_admin_renaming(tenant, port):
     """Access the admin URL to trigger folder renaming"""

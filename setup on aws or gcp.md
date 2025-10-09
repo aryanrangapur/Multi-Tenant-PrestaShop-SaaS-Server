@@ -109,4 +109,3 @@ Run the total setup script to start the application:
 make sure your ports mentioned in Readme.md are open.
 
 you can add your custom domain and experiment with the code.
-
