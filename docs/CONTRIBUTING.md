@@ -107,7 +107,7 @@ Open an issue with:
 
 ## Security Issues
 Do not post security vulnerabilities publicly.  
-Instead, email the maintainer directly at **aryanrangapur@gmail.com** (or your preferred contact).
+Instead, email the maintainer directly at **aryan.rangapur717@gmail.com** (or your preferred contact).
 
 
 
