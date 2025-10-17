@@ -20,7 +20,7 @@ If you discover a security vulnerability in this project, **please do not open a
 
 Instead, report it responsibly by following these steps:
 
-1. Email the project maintainer directly at **[aryanrangapur@gmail.com](mailto:aryanrangapur@gmail.com)** with the subject line:
+1. Email the project maintainer directly at **[aryan.rangapur717@gmail.com](mailto:aryan.rangapur717@gmail.com)** with the subject line:
    `Security Vulnerability Report – PrestaShop SaaS`
 2. Include the following details in your report:
 
@@ -68,7 +68,7 @@ To stay informed:
 For security-related communication, contact:
 
 **Maintainer:** Aryan Rangapur
-**Email:** [aryanrangapur@gmail.com](mailto:aryanrangapur@gmail.com)
+**Email:** [aryan.rangapur717@gmail.com](mailto:aryan.rangapur717@gmail.com)
 **Project:** PrestaShop Multi-Tenant SaaS Platform
 
 Thank you for helping us keep this project secure and reliable.
