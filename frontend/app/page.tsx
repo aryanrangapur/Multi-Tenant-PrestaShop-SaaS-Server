@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Add this Highlight component
 const Highlight = ({ children }: { children: React.ReactNode }) => (
@@ -15,30 +15,6 @@ const LoadingDots = () => (
     <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
   </span>
 );
-
-// Copy to clipboard component
-const CopyButton = ({ text, label }: { text: string; label: string }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="px-3 py-1 text-sm bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
-    >
-      {copied ? 'Copied!' : 'Copy'}
-    </button>
-  );
-};
 
 export default function Home() {
   const [email, setEmail] = useState("");
@@ -57,6 +33,13 @@ export default function Home() {
   });
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [pollingCount, setPollingCount] = useState(0);
+
+  // Dummy progress tracking with milestone-based increments
+  const [dummyProgress, setDummyProgress] = useState(0);
+  const dummyProgressRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const totalDummyTime = 165; // 2 minutes 45 seconds in seconds
+  const [showLinks, setShowLinks] = useState(false);
 
   const validatePassword = (password: string) => {
     if (password.length < 8) {
@@ -80,6 +63,53 @@ export default function Home() {
     setPasswordError(validatePassword(newPassword));
   };
 
+  // Start dummy progress bar with milestone-based increments
+  const startDummyProgress = () => {
+    setDummyProgress(0);
+    setShowLinks(false);
+    startTimeRef.current = Date.now();
+    
+    // Clear any existing timeouts
+    if (dummyProgressRef.current) {
+      clearTimeout(dummyProgressRef.current);
+    }
+
+    // Define progress milestones: [timeInSeconds, percentage]
+    const milestones = [
+      [0, 1],    // Start at 1% immediately
+      [20, 10],  // 20s -> 10%
+      [40, 25],  // 40s -> 25%
+      [60, 40],  // 60s -> 40%
+      [100, 60], // 100s -> 60%
+      [130, 80], // 130s -> 80%
+      [160, 99], // 160s -> 99%
+      [165, 100] // 165s -> 100%
+    ];
+
+    milestones.forEach(([time, percentage]) => {
+      dummyProgressRef.current = setTimeout(() => {
+        setDummyProgress(percentage as number);
+        
+        // If this is the 100% milestone, handle completion
+        if (percentage === 100) {
+          if (result) {
+            setShowLinks(true);
+          }
+          // If we don't have result yet, we'll wait for it in the polling effect
+        }
+      }, (time as number) * 1000);
+    });
+  };
+
+  // Stop dummy progress
+  const stopDummyProgress = () => {
+    if (dummyProgressRef.current) {
+      clearTimeout(dummyProgressRef.current);
+      dummyProgressRef.current = null;
+    }
+    startTimeRef.current = null;
+  };
+
   // Reset deployment state when inputs change
   useEffect(() => {
     if ((email || password) && !loading && !result) {
@@ -92,6 +122,9 @@ export default function Home() {
         status: 'idle'
       });
       setPollingCount(0);
+      setDummyProgress(0);
+      setShowLinks(false);
+      stopDummyProgress();
     }
   }, [email, password, loading, result]);
 
@@ -104,14 +137,14 @@ export default function Home() {
         try {
           console.log(`Polling progress for tenant: ${tenantId}`);
           const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/deployment-status/${tenantId}`);
-          
+
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: Failed to fetch progress`);
           }
-          
+
           const data = await response.json();
           console.log('Progress data received:', data);
-          
+
           // Update progress state with received data
           setProgress(prev => ({
             ...prev,
@@ -128,11 +161,16 @@ export default function Home() {
             console.log(`Deployment ${data.status}, stopping polling`);
             clearInterval(pollInterval);
             setLoading(false);
-            
+
             if (data.status === 'completed' && data.result) {
               setResult(data.result);
+              // If we have result and dummy progress is at 99% or 100%, show links immediately
+              if (dummyProgress >= 99) {
+                setShowLinks(true);
+              }
             } else if (data.status === 'error') {
               setError(data.message || 'Deployment failed');
+              stopDummyProgress();
             }
           }
         } catch (err) {
@@ -151,33 +189,24 @@ export default function Home() {
         clearInterval(pollInterval);
       }
     };
-  }, [tenantId, loading]);
+  }, [tenantId, loading, dummyProgress]);
 
-  // Fallback progress simulation
+  // Handle dummy progress completion and real deployment coordination
   useEffect(() => {
-    let fallbackInterval: NodeJS.Timeout;
-
-    if (loading && progress.percent === 0 && pollingCount > 2) {
-      fallbackInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev.percent >= 90 || prev.status === 'completed' || prev.status === 'error') {
-            clearInterval(fallbackInterval);
-            return prev;
-          }
-          return {
-            ...prev,
-            percent: Math.min(prev.percent + 5, 90)
-          };
-        });
-      }, 5000);
-    }
-
-    return () => {
-      if (fallbackInterval) {
-        clearInterval(fallbackInterval);
+    if (dummyProgress >= 99) {
+      // At 99% or 100%, if we have the result, show links
+      if (result) {
+        setShowLinks(true);
       }
+    }
+  }, [dummyProgress, result]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      stopDummyProgress();
     };
-  }, [loading, progress.percent, pollingCount]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,12 +225,17 @@ export default function Home() {
     setPasswordError("");
     setTenantId(null);
     setPollingCount(0);
+    setDummyProgress(0);
+    setShowLinks(false);
     setProgress({
       percent: 0,
       stage: 'Starting deployment...',
       message: 'Preparing to create your store',
       status: 'processing'
     });
+
+    // Start dummy progress bar with milestones
+    startDummyProgress();
 
     try {
       console.log('Sending create-store request...');
@@ -231,7 +265,7 @@ export default function Home() {
           admin_email: data.admin_email,
           admin_password: data.admin_password
         });
-        setLoading(false);
+        // Don't set loading to false yet - wait for dummy progress
       } else {
         throw new Error('No tenant ID or store URLs received from server');
       }
@@ -240,6 +274,7 @@ export default function Home() {
       setError(err.message);
       setLoading(false);
       setTenantId(null);
+      stopDummyProgress();
       setProgress({
         percent: 0,
         stage: 'Error',
@@ -249,6 +284,16 @@ export default function Home() {
     }
   };
 
+  // Calculate estimated time remaining
+  const getEstimatedTimeRemaining = () => {
+    if (!startTimeRef.current) return totalDummyTime;
+
+    const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    const remaining = Math.max(0, totalDummyTime - elapsed);
+    return remaining;
+  };
+
+  const estimatedTimeRemaining = getEstimatedTimeRemaining();
 
   return (
     <main className="min-h-screen">
@@ -361,18 +406,49 @@ export default function Home() {
                   Deploying Your Store <LoadingDots />
                 </h3>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-foreground">{progress.stage}</span>
+                <div className="space-y-4">
+                  {/* Dummy Progress Bar - Made Thin */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-medium text-foreground text-sm">Deployment Progress</span>
+                      <span className="text-sm text-muted-foreground">{dummyProgress}%</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-1.5">
+                      <div
+                        className="bg-foreground h-1.5 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${dummyProgress}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {progress.stage || 'Initializing...'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {estimatedTimeRemaining > 0 ? `~${estimatedTimeRemaining}s remaining` : 'Finishing up...'}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="text-sm text-muted-foreground">{progress.message}</p>
+                  {/* Real Progress Info */}
+                  <div className="p-3 bg-background/50 rounded border border-border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{progress.stage || 'Starting deployment'}</p>
+                        <p className="text-sm text-muted-foreground mt-1">{progress.message || 'Preparing your store instance'}</p>
+                      </div>
+                      {progress.percent > 0 && (
+                        <span className="text-xs bg-foreground text-background px-2 py-1 rounded-full">
+                          Backend: {progress.percent}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   <div className="text-xs text-muted-foreground pt-2 border-t border-border">
-                    <p>This usually takes 1-2 minutes. Please don't close this page.</p>
-                    {progress.percent === 0 && pollingCount > 2 && (
+                    <p>Estimated deployment time: 2-3 minutes. Please don't close this page.</p>
+                    {dummyProgress >= 99 && !showLinks && (
                       <p className="text-amber-600 mt-1">
-                        If progress stays at 0%, the backend might not be reporting progress correctly.
+                        Finalizing deployment... Your store links will appear momentarily.
                       </p>
                     )}
                   </div>
@@ -387,7 +463,8 @@ export default function Home() {
                 </div>
               )}
 
-              {result && (
+              {/* Show results only when both dummy progress is complete AND we have actual links */}
+              {(showLinks || (dummyProgress >= 99 && result)) && result && (
                 <div className="space-y-6 p-6 bg-background border border-border rounded-md">
                   <div className="flex items-center text-green-600 mb-2">
                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -458,7 +535,6 @@ export default function Home() {
                             <span className="text-foreground font-mono">{result.admin_email}</span>
                           </div>
                         </div>
-                        <CopyButton text={result.admin_email} label="Email" />
                       </div>
                     </div>
 
@@ -471,10 +547,10 @@ export default function Home() {
                             <span className="text-foreground font-mono">{result.admin_password}</span>
                           </div>
                         </div>
-                        <CopyButton text={result.admin_password} label="Password" />
                       </div>
                     </div>
                   </div>
+
 
                   <div className="pt-4 border-t border-border">
                     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -491,9 +567,11 @@ export default function Home() {
                             status: 'idle'
                           });
                           setPollingCount(0);
+                          setDummyProgress(0);
+                          setShowLinks(false);
+                          stopDummyProgress();
                         }}
-                        className="px-6 py-2 bg-foreground text-background rounded hover:bg-foreground/90 transition-colors font-medium"
-                      >
+                        className="w-full md:w-auto px-8 py-3 bg-foreground text-background font-medium rounded-md hover:bg-foreground/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         Deploy Another Store
                       </button>
 

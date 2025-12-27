@@ -134,7 +134,7 @@ def trigger_admin_renaming(tenant, port):
         print(f"Admin access response status: {response.status_code}")
 
         # Wait a moment for the renaming to complete
-        time.sleep(5)
+        time.sleep(10)
         return True
     except Exception as e:
         print(f"Error triggering admin renaming: {e}")
