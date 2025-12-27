@@ -95,7 +95,9 @@ export SERVER_IP=$(curl -4 icanhazip.com)
 echo "SERVER_IP=$SERVER_IP" > .env
 ```
 
-
+[
+MAKE EMPTY `.env` FILES BEFORE RUNNING `./total-setup.sh` in `/frontend` and `/backend`
+]
 
 ## 8. Run Setup Script
 
