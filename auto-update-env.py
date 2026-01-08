@@ -4,67 +4,60 @@ import re
 import requests
 
 def get_instance_ip():
-    """Get the server's public IP with simple fallback - WORKS ON ANY CLOUD"""
-    try:
-        # Try to get public IP from icanhazip.com
-        response = requests.get('https://icanhazip.com', timeout=5)
-        ip = response.text.strip()
-        
-        # Validate it's a proper IP address
-        if ip and len(ip) > 6 and len(ip) < 16:  # Basic IP validation
-            print(f"✅ Using public IP: {ip}")
-            return ip
-        else:
-            print(f"⚠️  Invalid IP format from icanhazip: {ip}")
-            raise ValueError("Invalid IP format")
-            
-    except Exception as e:
-        print(f"⚠️  Failed to get public IP from icanhazip: {e}")
-        
-        # Try alternative IP services as backup
-        alternative_services = [
-            'https://api.ipify.org',
-            'https://checkip.amazonaws.com',
-            'https://ipinfo.io/ip'
-        ]
-        
-        for service in alternative_services:
-            try:
-                response = requests.get(service, timeout=5)
-                ip = response.text.strip()
-                if ip and len(ip) > 6 and len(ip) < 16:
-                    print(f"✅ Using public IP from {service}: {ip}")
-                    return ip
-            except Exception as alt_e:
-                print(f"⚠️  Failed to get IP from {service}: {alt_e}")
-                continue
-    
-    # Final fallback
-    print("🚨 Warning: No public IP found, using localhost fallback")
+    """Get public IP with multiple fallbacks."""
+    services = [
+        "https://icanhazip.com",
+        "https://api.ipify.org",
+        "https://checkip.amazonaws.com",
+        "https://ipinfo.io/ip",
+    ]
+
+    for service in services:
+        try:
+            response = requests.get(service, timeout=5)
+            ip = response.text.strip()
+            if ip and 6 < len(ip) < 16:
+                print(f"✅ Using public IP: {ip}")
+                return ip
+        except Exception as e:
+            print(f"⚠️ Failed to get IP from {service}: {e}")
+
+    print("🚨 No public IP found, using localhost")
     return "127.0.0.1"
 
-def update_env_file(file_path, pattern, replacement):
-    """Update or insert a variable line in an .env file."""
+
+def update_env_file(file_path, key, value):
+    """
+    Create .env if missing.
+    Update key if exists.
+    Append key if missing.
+    """
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
     if not os.path.exists(file_path):
-        print(f" {file_path} not found, skipping.")
-        return False
+        print(f"📄 Creating {file_path}")
+        content = ""
+    else:
+        with open(file_path, "r") as f:
+            content = f.read()
 
-    with open(file_path, "r") as f:
-        content = f.read()
+    pattern = rf"^{key}=.*$"
+    replacement = f"{key}={value}"
 
-    new_content, count = re.subn(pattern, replacement, content)
+    new_content, count = re.subn(pattern, replacement, content, flags=re.MULTILINE)
 
     if count == 0:
-        new_content += f"\n{replacement}\n"
+        if content and not content.endswith("\n"):
+            new_content += "\n"
+        new_content += replacement + "\n"
 
     with open(file_path, "w") as f:
         f.write(new_content)
 
-    print(f"Updated {file_path}")
-    return True
+    print(f"✅ Updated {file_path}: {key}={value}")
 
-def read_env_line(file_path, key):
-    """Read specific key value from .env."""
+
+def read_env_value(file_path, key):
     if not os.path.exists(file_path):
         return "N/A"
     with open(file_path, "r") as f:
@@ -73,16 +66,31 @@ def read_env_line(file_path, key):
                 return line.strip().split("=", 1)[1]
     return "N/A"
 
+
 if __name__ == "__main__":
     ip = get_instance_ip()
 
     frontend_env = "frontend/.env"
     backend_env = "backend/.env"
 
-    update_env_file(frontend_env, r"^NEXT_PUBLIC_BACKEND_URL=.*", f"NEXT_PUBLIC_BACKEND_URL=http://{ip}:5000")
-    update_env_file(backend_env, r"^SERVER_IP=.*", f"SERVER_IP={ip}")
+    update_env_file(
+        frontend_env,
+        "NEXT_PUBLIC_BACKEND_URL",
+        f"http://{ip}:5000",
+    )
 
-    print("\n Summary of updated .env values:")
-    print(f"Frontend → NEXT_PUBLIC_BACKEND_URL = {read_env_line(frontend_env, 'NEXT_PUBLIC_BACKEND_URL')}")
-    print(f"Backend  → SERVER_IP               = {read_env_line(backend_env, 'SERVER_IP')}")
-    print(" Environment files updated successfully!")
+    update_env_file(
+        backend_env,
+        "SERVER_IP",
+        ip,
+    )
+
+    print("\n📦 Final .env values:")
+    print(
+        f"Frontend → NEXT_PUBLIC_BACKEND_URL={read_env_value(frontend_env, 'NEXT_PUBLIC_BACKEND_URL')}"
+    )
+    print(
+        f"Backend  → SERVER_IP={read_env_value(backend_env, 'SERVER_IP')}"
+    )
+
+    print("\n🎉 Environment files created/updated successfully!")
